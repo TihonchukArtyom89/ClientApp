@@ -6,6 +6,35 @@ namespace ClientApp
 {
     class Program
     {
+        static void Communicate(string hostname,int port)
+        {
+            //Буфер для входящих данных
+            byte[] bytes = new byte[1024];
+            //Соединяемся с удалённым сервером
+            //Устанавливаем удалённую конечную точку(сервер) для сокета
+            IPHostEntry ipHost = Dns.GetHostEntry(hostname);//подобнее о хост энтри
+            IPAddress ipAddr = ipHost.AddressList[0];
+            IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, port);//подобнее о конечной точке сокета
+            Socket sock = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            //Подключаемся к серверу
+            sock.Connect(ipEndPoint);
+            Console.Write("Введите сообщение: ");
+            string message = Console.ReadLine();
+            Console.WriteLine("Подключаемся к порту {0}", sock.RemoteEndPoint.ToString());
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            //ПОлучаем количество отправленных байтов
+            int bytesSent = sock.Send(data);
+            //получаем ответ от сервера , bytesRec количество принятых байтов
+            int bytesRec = sock.Receive(bytes);
+            Console.WriteLine("\n Ответ от сервера: {0}\n\n", Encoding.UTF8.GetString(bytes, 0, bytesRec));
+            //Вызываем Communicate() ещё
+            if(message.IndexOf("<TheEnd>")==-1)
+            {
+                Communicate(hostname, port);
+            }
+            sock.Shutdown(SocketShutdown.Both);
+            sock.Close();
+        }
         static void Main(string[] args)
         {
             try
@@ -23,66 +52,3 @@ namespace ClientApp
         }
     }
 }
-/*
-namespace OneThreadServer
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Однопоточный сервер запущен!");
-            //Подготавливаем конечную точку сокета
-            IPHostEntry ipHost = Dns.GetHostEntry("localhost");//подобнее о хост энтри
-            IPAddress ipAddr = ipHost.AddressList[0];
-            IPEndPoint iPEndPoint = new IPEndPoint(ipAddr, 8888);//подобнее о конечной точке сокета
-            //Создаём потоковый сокет по протоколу TCP/IP
-            Socket sock = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            try
-            {//связываем сокет с конечной точкой
-                sock.Bind(iPEndPoint);
-                //начинаем прослушку сокета
-                sock.Listen(10);
-                while(true)
-                {//Начинаем слушать соединения в бесконечном цикле
-                    Console.WriteLine("Слушаем, порт {0}",iPEndPoint);
-                    //Программа приостанавливается, ожидая входящее соединение
-                    //сокет для обмена данными с клиентом
-                    Socket s = sock.Accept();
-                    //сюда будут записаны данные от клиента
-                    string data = null;
-                    //Клиент есть, начинаем читать его запрос
-                    //массив полученных данных
-                    byte[] bytes = new byte[1024];
-                    //Длина полученных данных 
-                    int bytesCount = s.Receive(bytes);
-                    //Декодируем данные
-                    data += Encoding.UTF8.GetString(bytes, 0, bytesCount);
-                    //Показываем обработанные данные
-                    Console.WriteLine("Данные от клиента: " + data + "\n\n");
-                    //Генерируем ответ клиенту(размер в байтах его запроса)
-                    string reply = "Query size: " + data.Length.ToString() + " chars!!!";
-                    //Кодируем ответ сервера
-                    byte[] msg = Encoding.UTF8.GetBytes(reply);
-                    //Отправляем ответ сервера клиенту
-                    s.Send(msg);
-                    if(data.IndexOf("<TheEnd>")>-1)
-                    {
-                        Console.WriteLine("Соединение закрыто.");
-                        break;
-                    }
-                    s.Shutdown(SocketShutdown.Both);
-                    s.Close();
-                }
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine("Возникло необработанное исключение!\n" + ex.ToString());
-            }
-            finally
-            {
-                Console.ReadLine();
-            }
-        }
-    }
-}
-*/
